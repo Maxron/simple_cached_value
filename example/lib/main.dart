@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:async';
-
-import 'package:flutter/services.dart';
 import 'package:simple_cached_value/simple_cached_value.dart';
 
 void main() {
@@ -16,34 +13,76 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  String _platformVersion = 'Unknown';
-  final _simpleCachedValuePlugin = SimpleCachedValue();
+  String _memoryCacheRaw = '';
+  String _prefsCacheRaw = '';
+
+  late InMemoryCacheObject<String> _memoryCache;
+  SharedPreferencesCacheObject<String>? _prefsCache;
+  final TextEditingController _ttlController =
+      TextEditingController(text: '10');
 
   @override
   void initState() {
     super.initState();
-    initPlatformState();
+    _initializeCaches();
   }
 
-  // Platform messages are asynchronous, so we initialize in an async method.
-  Future<void> initPlatformState() async {
-    String platformVersion;
-    // Platform messages may fail, so we use a try/catch PlatformException.
-    // We also handle the message potentially returning null.
-    try {
-      platformVersion =
-          await _simpleCachedValuePlugin.getPlatformVersion() ?? 'Unknown platform version';
-    } on PlatformException {
-      platformVersion = 'Failed to get platform version.';
-    }
+  Duration _getUserTtl() {
+    final text = _ttlController.text;
+    final seconds = int.tryParse(text) ?? 10;
+    return Duration(seconds: seconds);
+  }
 
-    // If the widget was removed from the tree while the asynchronous platform
-    // message was in flight, we want to discard the reply rather than calling
-    // setState to update our non-existent appearance.
-    if (!mounted) return;
+  Future<void> _initializeCaches() async {
+    // In-memory cache
+    _memoryCache = InMemoryCacheObject<String>(
+      value: _getCurrentTimeString(),
+      ttl: _getUserTtl(),
+      valueProvider: () async => _getCurrentTimeString(),
+    );
 
+    // SharedPreferences cache
+    _prefsCache = SharedPreferencesCacheObject<String>(
+      cacheKeyPrefix: 'example',
+      ttl: _getUserTtl(),
+      fromString: (s) => s,
+      toString: (s) => s,
+      valueProvider: () async => _getCurrentTimeString(),
+    );
+  }
+
+  Future<void> _loadMemoryCache() async {
+    final value = await _memoryCache.getValue() ?? 'null';
     setState(() {
-      _platformVersion = platformVersion;
+      _memoryCacheRaw = value;
+    });
+  }
+
+  Future<void> _loadPrefsCache() async {
+    if (_prefsCache != null) {
+      final value = await _prefsCache!.getValue() ?? 'null';
+      setState(() {
+        _prefsCacheRaw = value;
+      });
+    }
+  }
+
+  String _getCurrentTimeString() {
+    final now = DateTime.now();
+    return '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
+  }
+
+  void _invalidateMemoryCache() {
+    _memoryCache.invalidate();
+    setState(() {
+      _memoryCacheRaw = '';
+    });
+  }
+
+  void _invalidatePrefsCache() {
+    _prefsCache?.invalidate();
+    setState(() {
+      _prefsCacheRaw = '';
     });
   }
 
@@ -52,10 +91,86 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
-          title: const Text('Plugin example app'),
+          title: const Text('Flutter Simple Cache Example'),
         ),
-        body: Center(
-          child: Text('Running on: $_platformVersion\n'),
+        body: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // TTL TextField (shared for both caches)
+              Row(
+                children: [
+                  const Text('TTL 秒數:'),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: _ttlController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                        contentPadding:
+                            EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                      ),
+                      onSubmitted: (_) async {
+                        await _initializeCaches();
+                        setState(() {});
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () async {
+                      await _initializeCaches();
+                      setState(() {});
+                    },
+                    child: const Text('設定 TTL'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'InMemoryCache',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Text('值: $_memoryCacheRaw'),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  ElevatedButton(
+                    onPressed: _loadMemoryCache,
+                    child: const Text('讀取值'),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: _invalidateMemoryCache,
+                    child: const Text('Invalidate'),
+                  ),
+                ],
+              ),
+              const Divider(height: 32, thickness: 2),
+              const Text(
+                'SharedPreferencesCache',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Text('值: $_prefsCacheRaw'),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  ElevatedButton(
+                    onPressed: _loadPrefsCache,
+                    child: const Text('讀取值'),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: _invalidatePrefsCache,
+                    child: const Text('Invalidate'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
