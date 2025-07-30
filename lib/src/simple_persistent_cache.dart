@@ -1,18 +1,16 @@
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:simple_cached_value/simple_cached_value.dart';
 
 // ------------------------------------------- //
 /// 持久化快取物件的實作基類
 // ------------------------------------------- //
 
-/// 使用 SharedPreferences 實現的簡單快取物件
-class SharedPreferencesCacheObject<T> extends PersistenceCacheObject<T> {
+/// 使用持久化提供者實現的簡單快取物件
+class PersistentCachedValue<T> extends PersistentCacheObject<T> {
   final Duration _ttl;
   final SimpleCacheValueProvider<T>? _valueProvider;
-
-  SharedPreferences? _prefs;
+  final PersistentProvider _persistenceProvider;
   T? _cachedValue;
-  DateTime? _lastUpdated;
+  DateTime? _expirationTime;
   bool _isInitialized = false;
 
   // 序列化相關的委託
@@ -26,21 +24,23 @@ class SharedPreferencesCacheObject<T> extends PersistenceCacheObject<T> {
   final String _cacheValueKey;
   final String _cacheTimestampKey;
 
-  SharedPreferencesCacheObject({
+  PersistentCachedValue({
     required String cacheKeyPrefix,
     required Duration ttl,
+    required PersistentProvider persistentProvider,
     SimpleSerializationDelegate<T>? serializer,
     SimpleSerializationFromString<T>? fromString,
     SimpleSerializationFormatString<T>? toString,
     required SimpleCacheValueProvider<T>? valueProvider,
   })  : assert(serializer != null || (fromString != null && toString != null),
             'Either serializer or fromString and toString must be provided.'),
+        _cacheValueKey = '${cacheKeyPrefix}_value',
+        _cacheTimestampKey = '${cacheKeyPrefix}_timestamp',
+        _ttl = ttl,
+        _persistenceProvider = persistentProvider,
         _serializer = serializer,
         _fromString = fromString,
         _formatString = toString,
-        _ttl = ttl,
-        _cacheValueKey = '${cacheKeyPrefix}_value',
-        _cacheTimestampKey = '${cacheKeyPrefix}_timestamp',
         _valueProvider = valueProvider;
 
   @override
@@ -51,8 +51,8 @@ class SharedPreferencesCacheObject<T> extends PersistenceCacheObject<T> {
 
   @override
   bool get isExpired {
-    if (_lastUpdated == null) return true;
-    return DateTime.now().difference(_lastUpdated!) > _ttl;
+    if (_expirationTime == null) return true;
+    return DateTime.now().isAfter(_expirationTime!);
   }
 
   @override
@@ -63,27 +63,23 @@ class SharedPreferencesCacheObject<T> extends PersistenceCacheObject<T> {
   }
 
   void _initializeSync() {
-    SharedPreferences.getInstance().then((prefs) {
-      _prefs = prefs;
-      _loadFromPreferences();
-      _isInitialized = true;
-    });
+    _persistenceProvider.ensureInitialized();
+    _loadFromPersistent();
+    _isInitialized = true;
   }
 
   Future<void> _ensureInitializedAsync() async {
     if (!_isInitialized) {
-      _prefs ??= await SharedPreferences.getInstance();
-      _loadFromPreferences();
+      _persistenceProvider.ensureInitialized();
+      _loadFromPersistent();
       _isInitialized = true;
     }
   }
 
-  void _loadFromPreferences() {
-    if (_prefs == null) return;
-
+  void _loadFromPersistent() {
     try {
       // 讀取儲存的值
-      final storedValue = _prefs!.getString(_cacheValueKey);
+      final storedValue = _persistenceProvider.getString(_cacheValueKey);
       if (storedValue != null) {
         // 使用序列化委託將字串轉換為物件
         if (_serializer != null) {
@@ -94,9 +90,9 @@ class SharedPreferencesCacheObject<T> extends PersistenceCacheObject<T> {
       }
 
       // 讀取最後更新時間
-      final lastUpdatedMs = _prefs!.getInt(_cacheTimestampKey);
-      if (lastUpdatedMs != null) {
-        _lastUpdated = DateTime.fromMillisecondsSinceEpoch(lastUpdatedMs);
+      final expirationTimeMs = _persistenceProvider.getInt(_cacheTimestampKey);
+      if (expirationTimeMs != null) {
+        _expirationTime = DateTime.fromMillisecondsSinceEpoch(expirationTimeMs);
       }
     } catch (e) {
       // 如果讀取失敗，清除相關資料
@@ -105,8 +101,6 @@ class SharedPreferencesCacheObject<T> extends PersistenceCacheObject<T> {
   }
 
   Future<void> _saveToPreferences(T value) async {
-    if (_prefs == null) return;
-
     try {
       String? serializedValue;
       if (_serializer != null) {
@@ -116,13 +110,13 @@ class SharedPreferencesCacheObject<T> extends PersistenceCacheObject<T> {
         // 使用 fromString 和 toString 進行序列化
         serializedValue = _formatString(value);
       }
-      await _prefs!.setString(_cacheValueKey, serializedValue ?? '');
-
-      final now = DateTime.now();
-      await _prefs!.setInt(_cacheTimestampKey, now.millisecondsSinceEpoch);
-
+      await _persistenceProvider.setString(
+          _cacheValueKey, serializedValue ?? '');
       _cachedValue = value;
-      _lastUpdated = now;
+
+      _expirationTime = DateTime.now().add(_ttl);
+      await _persistenceProvider.setInt(
+          _cacheTimestampKey, _expirationTime!.millisecondsSinceEpoch);
     } catch (e) {
       // 序列化失敗時清除快取
       _clearPreferences();
@@ -131,10 +125,10 @@ class SharedPreferencesCacheObject<T> extends PersistenceCacheObject<T> {
   }
 
   void _clearPreferences() {
-    _prefs?.remove(_cacheValueKey);
-    _prefs?.remove(_cacheTimestampKey);
+    _persistenceProvider.remove(_cacheValueKey);
+    _persistenceProvider.remove(_cacheTimestampKey);
     _cachedValue = null;
-    _lastUpdated = null;
+    _expirationTime = null;
   }
 
   @override
@@ -149,7 +143,6 @@ class SharedPreferencesCacheObject<T> extends PersistenceCacheObject<T> {
     try {
       // 從 valueProvider 獲取新值
       final newValue = await _valueProvider!();
-
       if (newValue != null) {
         await _saveToPreferences(newValue);
       }
@@ -181,6 +174,6 @@ class SharedPreferencesCacheObject<T> extends PersistenceCacheObject<T> {
   /// 檢查是否有儲存的資料
   Future<bool> hasStoredData() async {
     await _ensureInitializedAsync();
-    return _prefs?.containsKey(_cacheValueKey) ?? false;
+    return _persistenceProvider.containsKey(_cacheValueKey);
   }
 }

@@ -39,6 +39,6 @@ abstract class SimpleSerializationDelegate<T> {
 /// 這個類別用於實現需要持久化存儲的快取物件，例如使用 SharedPreferences
 /// 這個類別需要實現 ensureInitialized 方法來確保快取物件已經初始化
 /// ------------------------------------------- //
-abstract class PersistenceCacheObject<T> extends SimpleCacheObject<T> {
+abstract class PersistentCacheObject<T> extends SimpleCacheObject<T> {
   void ensureInitialized();
 }
