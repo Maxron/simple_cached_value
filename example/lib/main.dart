@@ -15,11 +15,9 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   String _memoryCacheRaw = '';
-  String _prefsCacheRaw = '';
   String _persistentCachedValueRaw = '';
 
   late InMemoryCacheObject<String> _memoryCache;
-  SharedPreferencesCacheObject<String>? _prefsCache;
   late PersistentCachedValue<String>? _persistanceCachedValue;
 
   final TextEditingController _ttlController = TextEditingController(text: '10');
@@ -41,15 +39,6 @@ class _MyAppState extends State<MyApp> {
     _memoryCache = InMemoryCacheObject<String>(
       value: _getCurrentTimeString(),
       ttl: _getUserTtl(),
-      valueProvider: () async => _getCurrentTimeString(),
-    );
-
-    // SharedPreferences cache
-    _prefsCache = SharedPreferencesCacheObject<String>(
-      cacheKeyPrefix: 'example',
-      ttl: _getUserTtl(),
-      fromString: (s) => s,
-      toString: (s) => s,
       valueProvider: () async => _getCurrentTimeString(),
     );
 
@@ -76,15 +65,6 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
-  Future<void> _loadPrefsCache() async {
-    if (_prefsCache != null) {
-      final value = await _prefsCache!.getValue() ?? 'null';
-      setState(() {
-        _prefsCacheRaw = value;
-      });
-    }
-  }
-
   Future<void> _loadFromPersistance() async {
     if (_persistanceCachedValue != null) {
       final value = await _persistanceCachedValue!.getValue() ?? 'null';
@@ -103,13 +83,6 @@ class _MyAppState extends State<MyApp> {
     _memoryCache.invalidate();
     setState(() {
       _memoryCacheRaw = '';
-    });
-  }
-
-  void _invalidatePrefsCache() {
-    _prefsCache?.invalidate();
-    setState(() {
-      _prefsCacheRaw = '';
     });
   }
 
@@ -185,27 +158,6 @@ class _MyAppState extends State<MyApp> {
                 ],
               ),
               const Divider(height: 32, thickness: 2),
-
-              // SharedPreferencesCache
-              const Text(
-                'SharedPreferencesCache',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              Text('值: $_prefsCacheRaw'),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  ElevatedButton(
-                    onPressed: _loadPrefsCache,
-                    child: const Text('讀取值'),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: _invalidatePrefsCache,
-                    child: const Text('Invalidate'),
-                  ),
-                ],
-              ),
 
               // SharedPreferencesCache
               const Text(
