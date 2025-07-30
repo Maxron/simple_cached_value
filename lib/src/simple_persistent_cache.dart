@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:simple_cached_value/simple_cached_value.dart';
 
 // ------------------------------------------- //
@@ -11,7 +10,7 @@ class PersistentCachedValue<T> extends PersistentCacheObject<T> {
   final SimpleCacheValueProvider<T>? _valueProvider;
   final PersistentProvider _persistenceProvider;
   T? _cachedValue;
-  DateTime? _lastUpdated;
+  DateTime? _expirationTime;
   bool _isInitialized = false;
 
   // 序列化相關的委託
@@ -52,8 +51,8 @@ class PersistentCachedValue<T> extends PersistentCacheObject<T> {
 
   @override
   bool get isExpired {
-    if (_lastUpdated == null) return true;
-    return DateTime.now().difference(_lastUpdated!) > _ttl;
+    if (_expirationTime == null) return true;
+    return DateTime.now().isAfter(_expirationTime!);
   }
 
   @override
@@ -78,10 +77,8 @@ class PersistentCachedValue<T> extends PersistentCacheObject<T> {
   }
 
   void _loadFromPersistent() {
-    debugPrint('[[PersistentCachedValue._loadFromPersistent]] ');
     try {
       // 讀取儲存的值
-      debugPrint('[[PersistentCachedValue._loadFromPersistent]] key: $_cacheValueKey');
       final storedValue = _persistenceProvider.getString(_cacheValueKey);
       if (storedValue != null) {
         // 使用序列化委託將字串轉換為物件
@@ -93,9 +90,9 @@ class PersistentCachedValue<T> extends PersistentCacheObject<T> {
       }
 
       // 讀取最後更新時間
-      final lastUpdatedMs = _persistenceProvider.getInt(_cacheTimestampKey);
-      if (lastUpdatedMs != null) {
-        _lastUpdated = DateTime.fromMillisecondsSinceEpoch(lastUpdatedMs);
+      final expirationTimeMs = _persistenceProvider.getInt(_cacheTimestampKey);
+      if (expirationTimeMs != null) {
+        _expirationTime = DateTime.fromMillisecondsSinceEpoch(expirationTimeMs);
       }
     } catch (e) {
       // 如果讀取失敗，清除相關資料
@@ -113,16 +110,11 @@ class PersistentCachedValue<T> extends PersistentCacheObject<T> {
         // 使用 fromString 和 toString 進行序列化
         serializedValue = _formatString(value);
       }
-      debugPrint('[[PersistentCachedValue._saveToPreferences]] ');
-      debugPrint('key: $_cacheValueKey');
-      debugPrint('key: $_cacheTimestampKey');
       await _persistenceProvider.setString(_cacheValueKey, serializedValue ?? '');
-
-      final now = DateTime.now();
-      await _persistenceProvider.setInt(_cacheTimestampKey, now.millisecondsSinceEpoch);
-
       _cachedValue = value;
-      _lastUpdated = now;
+
+      _expirationTime = DateTime.now().add(_ttl);
+      await _persistenceProvider.setInt(_cacheTimestampKey, _expirationTime!.millisecondsSinceEpoch);
     } catch (e) {
       // 序列化失敗時清除快取
       _clearPreferences();
@@ -134,7 +126,7 @@ class PersistentCachedValue<T> extends PersistentCacheObject<T> {
     _persistenceProvider.remove(_cacheValueKey);
     _persistenceProvider.remove(_cacheTimestampKey);
     _cachedValue = null;
-    _lastUpdated = null;
+    _expirationTime = null;
   }
 
   @override
@@ -149,7 +141,6 @@ class PersistentCachedValue<T> extends PersistentCacheObject<T> {
     try {
       // 從 valueProvider 獲取新值
       final newValue = await _valueProvider!();
-
       if (newValue != null) {
         await _saveToPreferences(newValue);
       }

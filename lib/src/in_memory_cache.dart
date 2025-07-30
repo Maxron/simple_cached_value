@@ -13,7 +13,7 @@ import 'package:simple_cached_value/simple_cached_value.dart';
 class InMemoryCacheObject<T> implements SimpleCacheObject<T> {
   T? _value;
   final SimpleCacheValueProvider<T> _valueProvider;
-  DateTime? _createdAt;
+  DateTime? _expirationTime;
   final Duration _ttl;
   bool _isInvalidated;
 
@@ -23,9 +23,16 @@ class InMemoryCacheObject<T> implements SimpleCacheObject<T> {
     Duration? ttl,
   })  : _value = value,
         _valueProvider = valueProvider,
-        _createdAt = value != null ? DateTime.now() : null,
         _ttl = ttl ?? const Duration(minutes: 5),
-        _isInvalidated = false;
+        _isInvalidated = false {
+    _init();
+  }
+
+  void _init() {
+    if (_value != null) {
+      _expirationTime = _getExpirationTime();
+    }
+  }
 
   @override
   Duration get ttl => _ttl;
@@ -34,8 +41,10 @@ class InMemoryCacheObject<T> implements SimpleCacheObject<T> {
   bool get isValid => !_isInvalidated && !isExpired;
 
   @override
-  bool get isExpired =>
-      _createdAt == null || DateTime.now().isAfter(_createdAt!.add(_ttl));
+  bool get isExpired {
+    if (_expirationTime == null) return true;
+    return DateTime.now().isAfter(_expirationTime!);
+  }
 
   @override
   FutureOr<T?> getValue() async {
@@ -44,19 +53,21 @@ class InMemoryCacheObject<T> implements SimpleCacheObject<T> {
     final newValue = await _valueProvider();
     if (newValue != null) {
       _value = newValue;
-      _createdAt = DateTime.now();
+      _expirationTime = _getExpirationTime();
       _isInvalidated = false;
     } else {
       _value = null;
-      _createdAt = null;
+      _expirationTime = null;
     }
     return _value;
   }
+
+  DateTime _getExpirationTime() => DateTime.now().add(_ttl);
 
   @override
   void invalidate() {
     _isInvalidated = true;
     _value = null;
-    _createdAt = null;
+    _expirationTime = null;
   }
 }

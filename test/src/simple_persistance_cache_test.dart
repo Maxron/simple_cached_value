@@ -62,13 +62,14 @@ void main() {
     });
 
     test('should return cached value if not expired', () async {
-      final now = DateTime.now();
+      final ttl = Duration(minutes: 5);
+      final expirationTime = DateTime.now().add(ttl);
       await provider.setString('test_cache2_value', 'saved');
-      await provider.setInt('test_cache2_timestamp', now.millisecondsSinceEpoch);
+      await provider.setInt('test_cache2_timestamp', expirationTime.millisecondsSinceEpoch);
 
       final cache = PersistentCachedValue<String>(
         cacheKeyPrefix: 'test_cache2',
-        ttl: Duration(minutes: 5),
+        ttl: ttl,
         persistentProvider: provider,
         fromString: (s) => s,
         toString: (s) => s,
