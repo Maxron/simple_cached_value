@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:simple_cached_value/simple_cached_value.dart';
 
 void main() {
@@ -15,11 +16,13 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   String _memoryCacheRaw = '';
   String _prefsCacheRaw = '';
+  String _persistentCachedValueRaw = '';
 
   late InMemoryCacheObject<String> _memoryCache;
   SharedPreferencesCacheObject<String>? _prefsCache;
-  final TextEditingController _ttlController =
-      TextEditingController(text: '10');
+  late PersistentCachedValue<String>? _persistanceCachedValue;
+
+  final TextEditingController _ttlController = TextEditingController(text: '10');
 
   @override
   void initState() {
@@ -49,6 +52,21 @@ class _MyAppState extends State<MyApp> {
       toString: (s) => s,
       valueProvider: () async => _getCurrentTimeString(),
     );
+
+    // PersistentCachedValue
+    final prefs = await SharedPreferences.getInstance();
+    _persistanceCachedValue = PersistentCachedValue<String>(
+      cacheKeyPrefix: 'example_persistent',
+      ttl: _getUserTtl(),
+      persistentProvider: SharedPreferenceProvider(
+        getSharedPreference: () {
+          return prefs;
+        },
+      ),
+      fromString: (s) => s,
+      toString: (s) => s,
+      valueProvider: () async => _getCurrentTimeString(),
+    );
   }
 
   Future<void> _loadMemoryCache() async {
@@ -63,6 +81,15 @@ class _MyAppState extends State<MyApp> {
       final value = await _prefsCache!.getValue() ?? 'null';
       setState(() {
         _prefsCacheRaw = value;
+      });
+    }
+  }
+
+  Future<void> _loadFromPersistance() async {
+    if (_persistanceCachedValue != null) {
+      final value = await _persistanceCachedValue!.getValue() ?? 'null';
+      setState(() {
+        _persistentCachedValueRaw = value;
       });
     }
   }
@@ -83,6 +110,13 @@ class _MyAppState extends State<MyApp> {
     _prefsCache?.invalidate();
     setState(() {
       _prefsCacheRaw = '';
+    });
+  }
+
+  void _invalidatePersistanceCache() {
+    _persistanceCachedValue?.invalidate();
+    setState(() {
+      _persistentCachedValueRaw = '';
     });
   }
 
@@ -110,8 +144,7 @@ class _MyAppState extends State<MyApp> {
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
                         isDense: true,
-                        contentPadding:
-                            EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                        contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
                       ),
                       onSubmitted: (_) async {
                         await _initializeCaches();
@@ -129,6 +162,8 @@ class _MyAppState extends State<MyApp> {
                   ),
                 ],
               ),
+
+              /// InMemoryCache
               const SizedBox(height: 16),
               const Text(
                 'InMemoryCache',
@@ -150,6 +185,8 @@ class _MyAppState extends State<MyApp> {
                 ],
               ),
               const Divider(height: 32, thickness: 2),
+
+              // SharedPreferencesCache
               const Text(
                 'SharedPreferencesCache',
                 style: TextStyle(fontWeight: FontWeight.bold),
@@ -165,6 +202,27 @@ class _MyAppState extends State<MyApp> {
                   const SizedBox(width: 8),
                   ElevatedButton(
                     onPressed: _invalidatePrefsCache,
+                    child: const Text('Invalidate'),
+                  ),
+                ],
+              ),
+
+              // SharedPreferencesCache
+              const Text(
+                'PersistanceCachedValue',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Text('值: $_persistentCachedValueRaw'),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  ElevatedButton(
+                    onPressed: _loadFromPersistance,
+                    child: const Text('讀取值'),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: _invalidatePersistanceCache,
                     child: const Text('Invalidate'),
                   ),
                 ],
