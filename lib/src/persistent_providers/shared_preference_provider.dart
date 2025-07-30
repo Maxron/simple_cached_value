@@ -1,23 +1,17 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'persistance_provider.dart';
+import 'persistent_provider.dart';
 
-class SharedPreferenceProvider implements PersistenceProvider {
-  final SharedPreferences _sharedPreference;
+class SharedPreferenceProvider implements PersistentProvider {
+  late final SharedPreferences _sharedPreference;
 
-  SharedPreferenceProvider({
-    required SharedPreferences sharedPreference,
-  }) : _sharedPreference = sharedPreference;
+  final SharedPreferences Function() getSharedPreference;
 
-  static Future<SharedPreferenceProvider> instance() async {
-    return SharedPreferenceProvider(
-      sharedPreference: await SharedPreferences.getInstance(),
-    );
-  }
+  SharedPreferenceProvider({required this.getSharedPreference});
 
   @override
-  void ensureInitialized() {
-    SharedPreferences.getInstance();
+  void ensureInitialized() async {
+    _sharedPreference = getSharedPreference();
   }
 
   @override

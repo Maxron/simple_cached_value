@@ -1,6 +1,6 @@
 import 'dart:async';
 
-abstract class PersistenceProvider {
+abstract class PersistentProvider {
   void ensureInitialized();
 
   bool containsKey(String key);
