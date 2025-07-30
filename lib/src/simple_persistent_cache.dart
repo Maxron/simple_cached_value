@@ -110,11 +110,13 @@ class PersistentCachedValue<T> extends PersistentCacheObject<T> {
         // 使用 fromString 和 toString 進行序列化
         serializedValue = _formatString(value);
       }
-      await _persistenceProvider.setString(_cacheValueKey, serializedValue ?? '');
+      await _persistenceProvider.setString(
+          _cacheValueKey, serializedValue ?? '');
       _cachedValue = value;
 
       _expirationTime = DateTime.now().add(_ttl);
-      await _persistenceProvider.setInt(_cacheTimestampKey, _expirationTime!.millisecondsSinceEpoch);
+      await _persistenceProvider.setInt(
+          _cacheTimestampKey, _expirationTime!.millisecondsSinceEpoch);
     } catch (e) {
       // 序列化失敗時清除快取
       _clearPreferences();

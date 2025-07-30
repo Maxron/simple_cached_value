@@ -65,7 +65,8 @@ void main() {
       final ttl = Duration(minutes: 5);
       final expirationTime = DateTime.now().add(ttl);
       await provider.setString('test_cache2_value', 'saved');
-      await provider.setInt('test_cache2_timestamp', expirationTime.millisecondsSinceEpoch);
+      await provider.setInt(
+          'test_cache2_timestamp', expirationTime.millisecondsSinceEpoch);
 
       final cache = PersistentCachedValue<String>(
         cacheKeyPrefix: 'test_cache2',
@@ -83,7 +84,8 @@ void main() {
     test('should fetch new value if expired', () async {
       final old = DateTime.now().subtract(Duration(minutes: 10));
       await provider.setString('test_cache3_value', 'old');
-      await provider.setInt('test_cache3_timestamp', old.millisecondsSinceEpoch);
+      await provider.setInt(
+          'test_cache3_timestamp', old.millisecondsSinceEpoch);
 
       final cache = PersistentCachedValue<String>(
         cacheKeyPrefix: 'test_cache3',
@@ -101,7 +103,8 @@ void main() {
     test('should return old value if provider fails', () async {
       final old = DateTime.now().subtract(Duration(minutes: 10));
       await provider.setString('test_cache4_value', 'cached');
-      await provider.setInt('test_cache4_timestamp', old.millisecondsSinceEpoch);
+      await provider.setInt(
+          'test_cache4_timestamp', old.millisecondsSinceEpoch);
 
       final cache = PersistentCachedValue<String>(
         cacheKeyPrefix: 'test_cache4',
@@ -119,7 +122,8 @@ void main() {
     test('should clear cache correctly', () async {
       final now = DateTime.now();
       await provider.setString('test_cache5_value', 'x');
-      await provider.setInt('test_cache5_timestamp', now.millisecondsSinceEpoch);
+      await provider.setInt(
+          'test_cache5_timestamp', now.millisecondsSinceEpoch);
 
       final cache = PersistentCachedValue<String>(
         cacheKeyPrefix: 'test_cache5',

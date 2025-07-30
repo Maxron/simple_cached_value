@@ -20,7 +20,8 @@ class _MyAppState extends State<MyApp> {
   late InMemoryCacheObject<String> _memoryCache;
   late PersistentCachedValue<String>? _persistanceCachedValue;
 
-  final TextEditingController _ttlController = TextEditingController(text: '10');
+  final TextEditingController _ttlController =
+      TextEditingController(text: '10');
 
   @override
   void initState() {
@@ -117,7 +118,8 @@ class _MyAppState extends State<MyApp> {
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
                         isDense: true,
-                        contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                        contentPadding:
+                            EdgeInsets.symmetric(vertical: 8, horizontal: 8),
                       ),
                       onSubmitted: (_) async {
                         await _initializeCaches();
