@@ -43,9 +43,13 @@ final value = await cache.getValue();
 ### Persistent cache (SharedPreferences)
 
 ```dart
-final cache = SharedPreferencesCacheObject<int>(
+final prefs = await SharedPreferences.getInstance();
+final cache = PersistentCachedValue<int>(
   cacheKeyPrefix: 'my_key',
   ttl: Duration(minutes: 10),
+  persistentProvider: SharedPreferenceProvider(
+    getSharedPreference: () => prefs,
+  ),
   fromString: (s) => int.tryParse(s),
   toString: (v) => v.toString(),
   valueProvider: () async => fetchValueFromServer(),
