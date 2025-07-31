@@ -62,24 +62,24 @@ class PersistentCachedValue<T> extends PersistentCacheObject<T> {
     }
   }
 
-  void _initializeSync() {
+  void _initializeSync() async {
     _persistenceProvider.ensureInitialized();
-    _loadFromPersistent();
+    await _loadFromPersistent();
     _isInitialized = true;
   }
 
   Future<void> _ensureInitializedAsync() async {
     if (!_isInitialized) {
       _persistenceProvider.ensureInitialized();
-      _loadFromPersistent();
+      await _loadFromPersistent();
       _isInitialized = true;
     }
   }
 
-  void _loadFromPersistent() {
+  Future<void> _loadFromPersistent() async {
     try {
       // 讀取儲存的值
-      final storedValue = _persistenceProvider.getString(_cacheValueKey);
+      final storedValue = await _persistenceProvider.getString(_cacheValueKey);
       if (storedValue != null) {
         // 使用序列化委託將字串轉換為物件
         if (_serializer != null) {
@@ -90,7 +90,8 @@ class PersistentCachedValue<T> extends PersistentCacheObject<T> {
       }
 
       // 讀取最後更新時間
-      final expirationTimeMs = _persistenceProvider.getInt(_cacheTimestampKey);
+      final expirationTimeMs =
+          await _persistenceProvider.getInt(_cacheTimestampKey);
       if (expirationTimeMs != null) {
         _expirationTime = DateTime.fromMillisecondsSinceEpoch(expirationTimeMs);
       }
@@ -124,9 +125,9 @@ class PersistentCachedValue<T> extends PersistentCacheObject<T> {
     }
   }
 
-  void _clearPreferences() {
-    _persistenceProvider.remove(_cacheValueKey);
-    _persistenceProvider.remove(_cacheTimestampKey);
+  void _clearPreferences() async {
+    await _persistenceProvider.remove(_cacheValueKey);
+    await _persistenceProvider.remove(_cacheTimestampKey);
     _cachedValue = null;
     _expirationTime = null;
   }

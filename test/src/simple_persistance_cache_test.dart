@@ -3,40 +3,6 @@ import 'dart:collection';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:simple_cached_value/simple_cached_value.dart';
 
-// FakePersistenceProvider: In-memory implementation of PersistenceProvider
-class FakePersistenceProvider implements PersistentProvider {
-  final Map<String, Object?> _store = HashMap();
-
-  @override
-  void ensureInitialized() {}
-
-  @override
-  bool containsKey(String key) => _store.containsKey(key);
-
-  @override
-  String? getString(String key) => _store[key] as String?;
-
-  @override
-  Future<bool> setString(String key, String value) async {
-    _store[key] = value;
-    return true;
-  }
-
-  @override
-  int? getInt(String key) => _store[key] as int?;
-
-  @override
-  Future<bool> setInt(String key, int value) async {
-    _store[key] = value;
-    return true;
-  }
-
-  @override
-  Future<bool> remove(String key) async {
-    return _store.remove(key) != null;
-  }
-}
-
 void main() {
   group('Test Simple Persistence Cache', () {
     late FakePersistenceProvider provider;
@@ -58,7 +24,7 @@ void main() {
       final value = await cache.getValue();
       expect(value, equals('cached_value'));
 
-      expect(provider.getString('test_cache_value'), 'cached_value');
+      expect(await provider.getString('test_cache_value'), 'cached_value');
     });
 
     test('should return cached value if not expired', () async {
@@ -139,4 +105,41 @@ void main() {
       expect(await cache.hasStoredData(), isFalse);
     });
   });
+}
+
+// FakePersistenceProvider: In-memory implementation of PersistenceProvider
+class FakePersistenceProvider implements PersistentProvider {
+  final Map<String, Object?> _store = HashMap();
+
+  @override
+  void ensureInitialized() {}
+
+  @override
+  Future<bool> containsKey(String key) async => _store.containsKey(key);
+
+  @override
+  Future<String?> getString(String key) async => _store[key] as String?;
+
+  @override
+  Future<bool> setString(String key, String value) async {
+    _store[key] = value;
+    return true;
+  }
+
+  @override
+  Future<int?> getInt(String key) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    return _store[key] as int?;
+  }
+
+  @override
+  Future<bool> setInt(String key, int value) async {
+    _store[key] = value;
+    return true;
+  }
+
+  @override
+  Future<bool> remove(String key) async {
+    return _store.remove(key) != null;
+  }
 }
