@@ -3,15 +3,15 @@ import 'dart:async';
 abstract class PersistentProvider {
   void ensureInitialized();
 
-  bool containsKey(String key);
+  Future<bool> containsKey(String key);
 
   Future<bool> setString(String key, String value);
 
-  String? getString(String key);
+  Future<String?> getString(String key);
 
   Future<bool> setInt(String key, int value);
 
-  int? getInt(String key);
+  Future<int?> getInt(String key);
 
   Future<bool> remove(String key);
 }

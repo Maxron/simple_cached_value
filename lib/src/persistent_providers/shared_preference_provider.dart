@@ -15,12 +15,12 @@ class SharedPreferenceProvider implements PersistentProvider {
   }
 
   @override
-  bool containsKey(String key) {
+  Future<bool> containsKey(String key) async {
     return _sharedPreference.containsKey(key);
   }
 
   @override
-  String? getString(String key) {
+  Future<String?> getString(String key) async {
     return _sharedPreference.getString(key);
   }
 
@@ -30,7 +30,7 @@ class SharedPreferenceProvider implements PersistentProvider {
   }
 
   @override
-  int? getInt(String key) {
+  Future<int?> getInt(String key) async {
     return _sharedPreference.getInt(key);
   }
 
