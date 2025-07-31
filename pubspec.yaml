@@ -1,6 +1,6 @@
 name: simple_cached_value
-description: "A new Flutter plugin project."
-version: 0.0.1
+description: "A flutter simple cached value project."
+version: 1.0.0
 homepage:
 
 environment:
