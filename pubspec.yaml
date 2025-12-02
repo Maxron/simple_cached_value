@@ -1,7 +1,9 @@
 name: simple_cached_value
-description: "A flutter simple cached value project."
-version: 1.0.0
-homepage:
+description: "Provide a simple way to cache values in Flutter applications using in-memory storage or persistent storage with Shared Preferences."
+version: 1.0.1
+homepage: https://github.com/Maxron/simple_cached_value
+repository: https://github.com/Maxron/simple_cached_value.git
+issue_tracker: https://github.com/Maxron/simple_cached_value/issues
 
 environment:
   sdk: ^3.6.2
